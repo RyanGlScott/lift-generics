@@ -1,8 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+{-|
+Module:      LiftGenericsSpec
+Copyright:   (C) 2015 Ryan Scott
+License:     BSD-style (see the file LICENSE)
+Maintainer:  Ryan Scott
+
+@hspec@ tests for `lift-generics`.
+-}
 module LiftGenericsSpec (main, spec) where
 
-import Control.Exception (ErrorCall(..))
+import Control.Exception
 import Language.Haskell.TH.Syntax (lift)
 import Test.Hspec (Spec, hspec, describe, it, parallel, shouldBe, shouldThrow)
 import Types (Empty, Unit(..), p, s)
