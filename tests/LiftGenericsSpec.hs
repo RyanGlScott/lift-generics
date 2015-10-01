@@ -10,10 +10,9 @@ Maintainer:  Ryan Scott
 -}
 module LiftGenericsSpec (main, spec) where
 
-import Control.Exception
 import Language.Haskell.TH.Syntax (lift)
-import Test.Hspec (Spec, hspec, describe, it, parallel, shouldBe, shouldThrow)
-import Types (Empty, Unit(..), p, s)
+import Test.Hspec (Spec, hspec, describe, it, parallel, shouldBe)
+import Types (Unit(..), p, s, u)
 
 main :: IO ()
 main = hspec spec
@@ -24,16 +23,15 @@ description = "should equal its lifted counterpart"
 spec :: Spec
 -- spec = return ()
 spec = parallel $ do
-    describe "Empty" $
-        it "should throw an error" $
-            $(lift (undefined :: Empty))
-              `shouldThrow` \ErrorCall{} -> True
     describe "Unit" $
         it description $
             Unit `shouldBe` $(lift Unit)
     describe "Product" $
         it description $
-            p == $(lift p)
+            p `shouldBe` $(lift p)
     describe "Sum" $
         it description $
-             s == $(lift s)
+            s `shouldBe` $(lift s)
+    describe "Unboxed" $
+        it description $
+            u `shouldBe` $(lift u)

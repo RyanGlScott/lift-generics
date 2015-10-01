@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP                  #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE MagicHash            #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -24,10 +25,18 @@ module Language.Haskell.TH.Lift.Generics (
     , Lift(..)
     ) where
 
+#if MIN_VERSION_template_haskell(2,8,0)
+import Data.Char (ord)
+import Data.Word (Word8)
+#endif
+
 import Generics.Deriving
 
+import GHC.Base (unpackCString#)
+import GHC.Exts
+
 import Language.Haskell.TH.Lib
-import Language.Haskell.TH.Syntax (Exp, Lift(..), Name, Q, mkNameG_d, mkNameG_v)
+import Language.Haskell.TH.Syntax
 
 #undef CURRENT_PACKAGE_KEY
 -- | "GHC.Generics"-based 'lift' implementation.
@@ -153,9 +162,6 @@ class GLiftDatatype f where
               -> f a    -- ^ The generic value
               -> Q Exp  -- ^ The resulting Template Haskell expression
 
-instance GLiftDatatype V1 where
-    gliftWith _ _ _ = appE (varE errorValName) (litE (stringL "Void lift"))
-
 instance (Constructor c, GLiftArgs f) => GLiftDatatype (C1 c f) where
     gliftWith pName mName c@(M1 x) =
       appsE (conE (mkNameG_d pName mName cName) : gliftArgs x)
@@ -186,5 +192,30 @@ instance GLiftArgs f => GLiftArgs (S1 s f) where
 instance (GLiftArgs f, GLiftArgs g) => GLiftArgs (f :*: g) where
     gliftArgs (f :*: g) = gliftArgs f ++ gliftArgs g
 
-errorValName :: Name
-errorValName = mkNameG_v "base" "GHC.Err" "error"
+instance GLiftArgs UAddr where
+    gliftArgs (UAddr a) = [litE (stringPrimL (word8ify (unpackCString# a)))]
+      where
+#if MIN_VERSION_template_haskell(2,8,0)
+        word8ify :: String -> [Word8]
+        word8ify = map (fromIntegral . ord)
+#else
+        word8ify :: String -> String
+        word8ify = id
+#endif
+
+#if MIN_VERSION_template_haskell(2,11,0)
+instance GLiftArgs UChar where
+    gliftArgs (UChar c) = [litE (charPrimL (C# c))]
+#endif
+
+instance GLiftArgs UDouble where
+    gliftArgs (UDouble d) = [litE (doublePrimL (toRational (D# d)))]
+
+instance GLiftArgs UFloat where
+    gliftArgs (UFloat f) = [litE (floatPrimL (toRational (F# f)))]
+
+instance GLiftArgs UInt where
+    gliftArgs (UInt i) = [litE (intPrimL (toInteger (I# i)))]
+
+instance GLiftArgs UWord where
+    gliftArgs (UWord w) = [litE (wordPrimL (toInteger (W# w)))]
