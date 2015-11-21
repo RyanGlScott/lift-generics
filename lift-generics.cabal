@@ -40,7 +40,7 @@ source-repository head
 library
   exposed-modules:     Language.Haskell.TH.Lift.Generics
   build-depends:       base             >= 4.3 && < 5
-                     , generic-deriving >= 1.8 && < 2
+                     , generic-deriving >= 1.9 && < 2
                      , ghc-prim
                      , template-haskell >= 2.4 && < 2.12
   hs-source-dirs:      src
@@ -55,7 +55,7 @@ test-suite spec
                        Paths_lift_generics
   build-depends:       base             >= 4.3   && < 5
                      , base-compat      >= 0.8.2 && < 1
-                     , generic-deriving >= 1.8   && < 2
+                     , generic-deriving >= 1.9   && < 2
                      , hspec            >= 2     && < 3
                      , lift-generics    == 0.1
                      , template-haskell >= 2.4   && < 2.12
