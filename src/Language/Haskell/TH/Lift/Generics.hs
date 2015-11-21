@@ -48,7 +48,7 @@ import Language.Haskell.TH.Syntax
 -- errors!
 --
 -- There's no need to fear, though—the code sample below shows an example of how to
--- properly use genericLiftWithPkg without shooting yourself in the foot:
+-- properly use 'genericLiftWithPkg' without shooting yourself in the foot:
 --
 -- @
 -- &#123;-&#35; LANGUAGE CPP, DeriveGeneric &#35;-&#125;
@@ -78,7 +78,7 @@ import Language.Haskell.TH.Syntax
 -- @
 --
 -- As you can see, this trick only works if (1) the current package key is known
--- (i.e., the Lift instance is defined in the same package as the datatype), or
+-- (i.e., the 'Lift' instance is defined in the same package as the datatype), or
 -- (2) you're dealing with a package that has a fixed package name (e.g., @base@,
 -- @ghc-prim@, @template-haskell@, etc.).
 --
