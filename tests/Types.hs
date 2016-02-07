@@ -3,9 +3,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies    #-}
 
+#if __GLASGOW_HASKELL__ >= 706
+{-# LANGUAGE DataKinds       #-}
+#endif
+
 {-|
 Module:      Types
-Copyright:   (C) 2015 Ryan Scott
+Copyright:   (C) 2015-2016 Ryan Scott
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Ryan Scott
 
