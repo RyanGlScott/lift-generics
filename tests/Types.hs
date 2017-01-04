@@ -9,7 +9,7 @@
 
 {-|
 Module:      Types
-Copyright:   (C) 2015-2016 Ryan Scott
+Copyright:   (C) 2015-2017 Ryan Scott
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Ryan Scott
 
