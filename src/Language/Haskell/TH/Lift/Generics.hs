@@ -1,9 +1,14 @@
+{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE CPP                  #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE MagicHash            #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
+#if __GLASGOW_HASKELL__ >= 708
+{-# LANGUAGE EmptyCase            #-}
+#endif
 
 {-|
 Module:      Language.Haskell.TH.Lift.Generics
@@ -179,6 +184,15 @@ instance (GLiftDatatype f, GLiftDatatype g) => GLiftDatatype (f :+: g) where
 -- purposes.
 class GLiftArgs f where
     gliftArgs :: f a -> [Q Exp]
+
+instance GLiftArgs V1 where
+    gliftArgs x =
+      (:[]) $ pure $ case x of
+#if __GLASGOW_HASKELL__ >= 708
+                       {}
+#else
+                       !_ -> undefined
+#endif
 
 instance GLiftArgs U1 where
     gliftArgs U1 = []
