@@ -187,11 +187,11 @@ class GLiftArgs f where
 
 instance GLiftArgs V1 where
     gliftArgs x =
-      (:[]) $ pure $ case x of
+      (:[]) $ return $ case x of
 #if __GLASGOW_HASKELL__ >= 708
-                       {}
+                         {}
 #else
-                       !_ -> undefined
+                         !_ -> undefined
 #endif
 
 instance GLiftArgs U1 where
