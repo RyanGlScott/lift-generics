@@ -1,4 +1,4 @@
-### next
+### 0.1.2
 * Add a case for `V1` (i.e., empty data types), which diverges in the way
   you'd expect.
 
