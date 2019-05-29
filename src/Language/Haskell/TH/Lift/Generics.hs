@@ -20,8 +20,12 @@ Maintainer:  Ryan Scott
 -}
 module Language.Haskell.TH.Lift.Generics (
       genericLiftWithPkg
+#if MIN_VERSION_template_haskell(2,9,0)
+    , genericLiftTypedWithPkg
+#endif
 #if __GLASGOW_HASKELL__ >= 711
     , genericLift
+    , genericLiftTyped
 #endif
     , GLift(..)
     , GLiftDatatype(..)
@@ -103,6 +107,12 @@ import Language.Haskell.TH.Syntax
 genericLiftWithPkg :: (Generic a, GLift (Rep a)) => String -> a -> Q Exp
 genericLiftWithPkg pkg = glift pkg . from
 
+#if MIN_VERSION_template_haskell(2,9,0)
+-- | Like 'genericLiftWithPkg', but returns a 'TExp' instead of an 'Exp'.
+genericLiftTypedWithPkg :: (Generic a, GLift (Rep a)) => String -> a -> Q (TExp a)
+genericLiftTypedWithPkg pkg = unsafeTExpCoerce . genericLiftWithPkg pkg
+#endif
+
 #if __GLASGOW_HASKELL__ >= 711
 -- | "GHC.Generics"-based 'lift' implementation. Only available on GHC 8.0 and later
 -- due to API limitations of earlier GHC versions.
@@ -137,6 +147,10 @@ genericLiftWithPkg pkg = glift pkg . from
 -- @
 genericLift :: (Generic a, GLift (Rep a)) => a -> Q Exp
 genericLift = glift "" . from
+
+-- | Like 'genericLift', but returns a 'TExp' instead of an 'Exp'.
+genericLiftTyped :: (Generic a, GLift (Rep a)) => a -> Q (TExp a)
+genericLiftTyped = unsafeTExpCoerce . genericLift
 #endif
 
 -- | Class of generic representation types which can be converted to Template
