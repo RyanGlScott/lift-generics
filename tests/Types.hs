@@ -29,10 +29,16 @@ import Prelude.Compat
 
 data Unit = Unit
   deriving (Eq, Ord, Show)
+$(deriveAll ''Unit)
+
 data Product a b c d = Product a b c d
   deriving (Eq, Ord, Show)
+$(deriveAll ''Product)
+
 data Sum a b = Inl a | Inr b
   deriving (Eq, Ord, Show)
+$(deriveAll ''Sum)
+
 data Unboxed a
    = Unboxed a
 #if MIN_VERSION_template_haskell(2,11,0)
@@ -43,6 +49,7 @@ data Unboxed a
              Int#
              Word#
   deriving (Eq, Ord, Show)
+$(deriveAll ''Unboxed)
 
 p :: Product Char Int Bool String
 p = Product 'a' 1 True "b"
@@ -74,8 +81,3 @@ instance (Lift a, Lift b) => Lift (Sum a b) where
 
 instance Lift a => Lift (Unboxed a) where
     lift = genericLiftWithPkg pkgKey
-
-$(deriveAll ''Unit)
-$(deriveAll ''Product)
-$(deriveAll ''Sum)
-$(deriveAll ''Unboxed)
