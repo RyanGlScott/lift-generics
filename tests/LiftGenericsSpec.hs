@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 {-|
@@ -10,7 +11,7 @@ Maintainer:  Ryan Scott
 -}
 module LiftGenericsSpec (main, spec) where
 
-import Language.Haskell.TH.Syntax (lift)
+import Language.Haskell.TH.Syntax (Lift(..))
 import Test.Hspec (Spec, hspec, describe, it, parallel, shouldBe)
 import Types (Unit(..), p, s, u)
 
@@ -35,3 +36,11 @@ spec = parallel $ do
     describe "Unboxed" $
         it description $
             u `shouldBe` $(lift u)
+#if MIN_VERSION_template_haskell(2,16,0)
+    describe "genericLiftTyped" $
+        it "should do what you expect" $ do
+            Unit `shouldBe` $$(liftTyped Unit)
+            p    `shouldBe` $$(liftTyped p)
+            s    `shouldBe` $$(liftTyped s)
+            u    `shouldBe` $$(liftTyped u)
+#endif

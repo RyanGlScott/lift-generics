@@ -21,7 +21,11 @@ import Generics.Deriving.TH (deriveAll)
 
 import GHC.Exts
 
-import Language.Haskell.TH.Lift.Generics (genericLiftWithPkg)
+import Language.Haskell.TH.Lift.Generics ( genericLiftWithPkg
+#if MIN_VERSION_template_haskell(2,16,0)
+                                         , genericLiftTyped
+#endif
+                                         )
 import Language.Haskell.TH.Syntax (Lift(..))
 
 import Prelude ()
@@ -72,12 +76,24 @@ pkgKey = "main"
 
 instance Lift Unit where
     lift = genericLiftWithPkg pkgKey
+#if MIN_VERSION_template_haskell(2,16,0)
+    liftTyped = genericLiftTyped
+#endif
 
 instance (Lift a, Lift b, Lift c, Lift d) => Lift (Product a b c d) where
     lift = genericLiftWithPkg pkgKey
+#if MIN_VERSION_template_haskell(2,16,0)
+    liftTyped = genericLiftTyped
+#endif
 
 instance (Lift a, Lift b) => Lift (Sum a b) where
     lift = genericLiftWithPkg pkgKey
+#if MIN_VERSION_template_haskell(2,16,0)
+    liftTyped = genericLiftTyped
+#endif
 
 instance Lift a => Lift (Unboxed a) where
     lift = genericLiftWithPkg pkgKey
+#if MIN_VERSION_template_haskell(2,16,0)
+    liftTyped = genericLiftTyped
+#endif
