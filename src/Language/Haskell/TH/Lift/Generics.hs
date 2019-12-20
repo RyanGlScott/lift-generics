@@ -181,6 +181,15 @@ class GLiftDatatype f where
               -> f a    -- ^ The generic value
               -> Q Exp  -- ^ The resulting Template Haskell expression
 
+instance GLiftDatatype V1 where
+    gliftWith _ _ x =
+      return $ case x of
+#if __GLASGOW_HASKELL__ >= 708
+                 {}
+#else
+                 !_ -> undefined
+#endif
+
 instance (Constructor c, GLiftArgs f) => GLiftDatatype (C1 c f) where
     gliftWith pName mName c@(M1 x) =
       appsE (conE (mkNameG_d pName mName cName) : gliftArgs x)
@@ -198,15 +207,6 @@ instance (GLiftDatatype f, GLiftDatatype g) => GLiftDatatype (f :+: g) where
 -- purposes.
 class GLiftArgs f where
     gliftArgs :: f a -> [Q Exp]
-
-instance GLiftArgs V1 where
-    gliftArgs x =
-      (:[]) $ return $ case x of
-#if __GLASGOW_HASKELL__ >= 708
-                         {}
-#else
-                         !_ -> undefined
-#endif
 
 instance GLiftArgs U1 where
     gliftArgs U1 = []

@@ -1,3 +1,6 @@
+### next [????.??.??]
+* Make `genericLift` work properly for empty data types.
+
 ### 0.1.3 [2019.11.26]
 * Add `genericLiftTyped` and `genericLiftTypedWithPkg`.
 
