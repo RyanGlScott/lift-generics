@@ -22,10 +22,14 @@ module Language.Haskell.TH.Lift.Generics (
       genericLiftWithPkg
 #if MIN_VERSION_template_haskell(2,9,0)
     , genericLiftTypedWithPkg
+    , genericLiftTypedTExpWithPkg
+    , genericLiftTypedCompatWithPkg
 #endif
 #if __GLASGOW_HASKELL__ >= 711
     , genericLift
     , genericLiftTyped
+    , genericLiftTypedTExp
+    , genericLiftTypedCompat
 #endif
     , GLift(..)
     , GLiftDatatype(..)
@@ -34,18 +38,25 @@ module Language.Haskell.TH.Lift.Generics (
     , Lift(..)
     ) where
 
+import Data.Foldable (foldl')
+
+import Generics.Deriving
+
+import GHC.Base (unpackCString#)
+import GHC.Exts (Double(..), Float(..), Int(..), Word(..))
+
+import Language.Haskell.TH.Lib
+import Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Syntax.Compat
+
 #if MIN_VERSION_template_haskell(2,8,0)
 import Data.Char (ord)
 import Data.Word (Word8)
 #endif
 
-import Generics.Deriving
-
-import GHC.Base (unpackCString#)
-import GHC.Exts
-
-import Language.Haskell.TH.Lib
-import Language.Haskell.TH.Syntax
+#if MIN_VERSION_template_haskell(2,11,0)
+import GHC.Exts (Char(..))
+#endif
 
 #undef CURRENT_PACKAGE_KEY
 -- | "GHC.Generics"-based 'lift' implementation.
@@ -104,13 +115,31 @@ import Language.Haskell.TH.Syntax
 -- foo :: Foo
 -- foo = $(lift (Foo 1 'a' "baz"))
 -- @
-genericLiftWithPkg :: (Generic a, GLift (Rep a)) => String -> a -> Q Exp
+genericLiftWithPkg :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> m Exp
 genericLiftWithPkg pkg = glift pkg . from
 
 #if MIN_VERSION_template_haskell(2,9,0)
+-- | Like 'genericLiftWithPkg', but returns a 'Code' instead of an 'Exp'.
+genericLiftTypedWithPkg :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> Code m a
+genericLiftTypedWithPkg pkg = unsafeCodeCoerce . genericLiftWithPkg pkg
+
 -- | Like 'genericLiftWithPkg', but returns a 'TExp' instead of an 'Exp'.
-genericLiftTypedWithPkg :: (Generic a, GLift (Rep a)) => String -> a -> Q (TExp a)
-genericLiftTypedWithPkg pkg = unsafeTExpCoerce . genericLiftWithPkg pkg
+genericLiftTypedTExpWithPkg :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> m (TExp a)
+genericLiftTypedTExpWithPkg pkg = unsafeTExpCoerceQuote . genericLiftWithPkg pkg
+
+-- | Lift 'genericLiftWithPkg', but returns:
+--
+-- * A 'Code' (if using @template-haskell-2.17.0.0@ or later), or
+-- * A 'TExp' (if using an older version of @template-haskell@)
+--
+-- This function is ideal for implementing the 'liftTyped' method of 'Lift'
+-- directly, as its type changed in @template-haskell-2.17.0.0@.
+genericLiftTypedCompatWithPkg :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> Splice m a
+# if MIN_VERSION_template_haskell(2,17,0)
+genericLiftTypedCompatWithPkg = genericLiftTypedWithPkg
+# else
+genericLiftTypedCompatWithPkg = genericLiftTypedTExpWithPkg
+# endif
 #endif
 
 #if __GLASGOW_HASKELL__ >= 711
@@ -145,21 +174,40 @@ genericLiftTypedWithPkg pkg = unsafeTExpCoerce . genericLiftWithPkg pkg
 -- foo :: Foo
 -- foo = $(lift (Foo 1 'a' "baz"))
 -- @
-genericLift :: (Generic a, GLift (Rep a)) => a -> Q Exp
+genericLift :: (Quote m, Generic a, GLift (Rep a)) => a -> m Exp
 genericLift = glift "" . from
 
+-- | Like 'genericLift', but returns a 'Code' instead of an 'Exp'.
+genericLiftTyped :: (Quote m, Generic a, GLift (Rep a)) => a -> Code m a
+genericLiftTyped = unsafeCodeCoerce . genericLift
+
 -- | Like 'genericLift', but returns a 'TExp' instead of an 'Exp'.
-genericLiftTyped :: (Generic a, GLift (Rep a)) => a -> Q (TExp a)
-genericLiftTyped = unsafeTExpCoerce . genericLift
+genericLiftTypedTExp :: (Quote m, Generic a, GLift (Rep a)) => a -> m (TExp a)
+genericLiftTypedTExp = unsafeTExpCoerceQuote . genericLift
+
+-- | Lift 'genericLift', but returns:
+--
+-- * A 'Code' (if using @template-haskell-2.17.0.0@ or later), or
+-- * A 'TExp' (if using an older version of @template-haskell@)
+--
+-- This function is ideal for implementing the 'liftTyped' method of 'Lift'
+-- directly, as its type changed in @template-haskell-2.17.0.0@.
+genericLiftTypedCompat :: (Quote m, Generic a, GLift (Rep a)) => a -> Splice m a
+# if MIN_VERSION_template_haskell(2,17,0)
+genericLiftTypedCompat = genericLiftTyped
+# else
+genericLiftTypedCompat = genericLiftTypedTExp
+# endif
 #endif
 
 -- | Class of generic representation types which can be converted to Template
 -- Haskell expressions. You shouldn't need to use this typeclass directly; it is
 -- only exported for educational purposes.
 class GLift f where
-    glift :: String -- ^ The package name (not used on GHC 8.0 and later)
+    glift :: Quote m
+          => String -- ^ The package name (not used on GHC 8.0 and later)
           -> f a    -- ^ The generic value
-          -> Q Exp  -- ^ The resulting Template Haskell expression
+          -> m Exp  -- ^ The resulting Template Haskell expression
 
 instance (Datatype d, GLiftDatatype f) => GLift (D1 d f) where
     glift _pkg d@(M1 x) = gliftWith pName mName x
@@ -176,10 +224,11 @@ instance (Datatype d, GLiftDatatype f) => GLift (D1 d f) where
 -- Haskell expressions, given a package and module name. You shouldn't need to use
 -- this typeclass directly; it is only exported for educational purposes.
 class GLiftDatatype f where
-    gliftWith :: String -- ^ The package name
+    gliftWith :: Quote m
+              => String -- ^ The package name
               -> String -- ^ The module name
               -> f a    -- ^ The generic value
-              -> Q Exp  -- ^ The resulting Template Haskell expression
+              -> m Exp  -- ^ The resulting Template Haskell expression
 
 instance GLiftDatatype V1 where
     gliftWith _ _ x =
@@ -191,8 +240,9 @@ instance GLiftDatatype V1 where
 #endif
 
 instance (Constructor c, GLiftArgs f) => GLiftDatatype (C1 c f) where
-    gliftWith pName mName c@(M1 x) =
-      appsE (conE (mkNameG_d pName mName cName) : gliftArgs x)
+    gliftWith pName mName c@(M1 x) = do
+      args <- sequence (gliftArgs x)
+      return $ foldl' AppE (ConE (mkNameG_d pName mName cName)) args
       where
         cName :: String
         cName = conName c
@@ -206,13 +256,13 @@ instance (GLiftDatatype f, GLiftDatatype g) => GLiftDatatype (f :+: g) where
 -- shouldn't need to use this typeclass directly; it is only exported for educational
 -- purposes.
 class GLiftArgs f where
-    gliftArgs :: f a -> [Q Exp]
+    gliftArgs :: Quote m => f a -> [m Exp]
 
 instance GLiftArgs U1 where
     gliftArgs U1 = []
 
 instance Lift c => GLiftArgs (K1 i c) where
-    gliftArgs (K1 x) = [lift x]
+    gliftArgs (K1 x) = [liftQuote x]
 
 instance GLiftArgs f => GLiftArgs (S1 s f) where
     gliftArgs (M1 x) = gliftArgs x
@@ -221,7 +271,7 @@ instance (GLiftArgs f, GLiftArgs g) => GLiftArgs (f :*: g) where
     gliftArgs (f :*: g) = gliftArgs f ++ gliftArgs g
 
 instance GLiftArgs UAddr where
-    gliftArgs (UAddr a) = [litE (stringPrimL (word8ify (unpackCString# a)))]
+    gliftArgs (UAddr a) = [return (LitE (StringPrimL (word8ify (unpackCString# a))))]
       where
 #if MIN_VERSION_template_haskell(2,8,0)
         word8ify :: String -> [Word8]
@@ -233,17 +283,17 @@ instance GLiftArgs UAddr where
 
 #if MIN_VERSION_template_haskell(2,11,0)
 instance GLiftArgs UChar where
-    gliftArgs (UChar c) = [litE (charPrimL (C# c))]
+    gliftArgs (UChar c) = [return (LitE (CharPrimL (C# c)))]
 #endif
 
 instance GLiftArgs UDouble where
-    gliftArgs (UDouble d) = [litE (doublePrimL (toRational (D# d)))]
+    gliftArgs (UDouble d) = [return (LitE (DoublePrimL (toRational (D# d))))]
 
 instance GLiftArgs UFloat where
-    gliftArgs (UFloat f) = [litE (floatPrimL (toRational (F# f)))]
+    gliftArgs (UFloat f) = [return (LitE (floatPrimL (toRational (F# f))))]
 
 instance GLiftArgs UInt where
-    gliftArgs (UInt i) = [litE (intPrimL (toInteger (I# i)))]
+    gliftArgs (UInt i) = [return (LitE (IntPrimL (toInteger (I# i))))]
 
 instance GLiftArgs UWord where
-    gliftArgs (UWord w) = [litE (wordPrimL (toInteger (W# w)))]
+    gliftArgs (UWord w) = [return (LitE (WordPrimL (toInteger (W# w))))]

@@ -11,9 +11,10 @@ Maintainer:  Ryan Scott
 -}
 module LiftGenericsSpec (main, spec) where
 
-import Language.Haskell.TH.Syntax (Lift(..))
-import Test.Hspec (Spec, hspec, describe, it, parallel, shouldBe)
-import Types (Unit(..), p, s, u)
+import Language.Haskell.TH.Syntax hiding (newName)
+import Language.Haskell.TH.Syntax.Compat
+import Test.Hspec
+import Types
 
 main :: IO ()
 main = hspec spec
@@ -22,25 +23,34 @@ description :: String
 description = "should equal its lifted counterpart"
 
 spec :: Spec
--- spec = return ()
 spec = parallel $ do
-    describe "Unit" $
-        it description $
-            Unit `shouldBe` $(lift Unit)
-    describe "Product" $
-        it description $
-            p `shouldBe` $(lift p)
-    describe "Sum" $
-        it description $
-            s `shouldBe` $(lift s)
-    describe "Unboxed" $
-        it description $
-            u `shouldBe` $(lift u)
+    describe "genericLift" $ do
+        describe "Unit" $
+            it description $ do
+                Unit `shouldBe` $(lift Unit)
+                ConE 'Unit `shouldBe` runPureQ (liftQuote Unit)
+        describe "Product" $
+            it description $
+                p `shouldBe` $(lift p)
+        describe "Sum" $
+            it description $
+                s `shouldBe` $(lift s)
+        describe "Unboxed" $
+            it description $
+                u `shouldBe` $(lift u)
 #if MIN_VERSION_template_haskell(2,16,0)
-    describe "genericLiftTyped" $
-        it "should do what you expect" $ do
-            Unit `shouldBe` $$(liftTyped Unit)
-            p    `shouldBe` $$(liftTyped p)
-            s    `shouldBe` $$(liftTyped s)
-            u    `shouldBe` $$(liftTyped u)
+    describe "genericLiftTyped" $ do
+        describe "Unit" $
+            it description $ do
+                Unit `shouldBe` $$(liftTyped Unit)
+                ConE 'Unit `shouldBe` runPureQ (unTypeCode (liftTypedQuote Unit))
+        describe "Product" $
+            it description $
+                p `shouldBe` $$(liftTyped p)
+        describe "Sum" $
+            it description $
+                s `shouldBe` $$(liftTyped s)
+        describe "Unboxed" $
+            it description $
+                u `shouldBe` $$(liftTyped u)
 #endif

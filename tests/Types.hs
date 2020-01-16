@@ -1,10 +1,12 @@
-{-# LANGUAGE CPP             #-}
-{-# LANGUAGE MagicHash       #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MagicHash                  #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 
 #if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE DataKinds                  #-}
 #endif
 
 {-|
@@ -15,7 +17,13 @@ Maintainer:  Ryan Scott
 
 Data types for testing `lift-generics`' capabilities.
 -}
-module Types (Unit(..), Product(..), Sum(..), p, s, u) where
+module Types (
+    PureQ, runPureQ
+  , Unit(..), Product(..), Sum(..)
+  , p, s, u
+  ) where
+
+import Control.Monad.State
 
 import Generics.Deriving.TH (deriveAll)
 
@@ -23,13 +31,23 @@ import GHC.Exts
 
 import Language.Haskell.TH.Lift.Generics ( genericLiftWithPkg
 #if MIN_VERSION_template_haskell(2,16,0)
-                                         , genericLiftTyped
+                                         , genericLiftTypedCompat
 #endif
                                          )
-import Language.Haskell.TH.Syntax (Lift(..))
+import Language.Haskell.TH.Syntax hiding (newName)
+import Language.Haskell.TH.Syntax.Compat
 
 import Prelude ()
 import Prelude.Compat
+
+newtype PureQ a = MkPureQ (State Uniq a)
+  deriving (Functor, Applicative, Monad, MonadState Uniq)
+
+runPureQ :: PureQ a -> a
+runPureQ m = case m of MkPureQ m' -> evalState m' 0
+
+instance Quote PureQ where
+  newName s = state $ \i -> (mkNameU s i, i + 1)
 
 data Unit = Unit
   deriving (Eq, Ord, Show)
@@ -77,23 +95,23 @@ pkgKey = "main"
 instance Lift Unit where
     lift = genericLiftWithPkg pkgKey
 #if MIN_VERSION_template_haskell(2,16,0)
-    liftTyped = genericLiftTyped
+    liftTyped = genericLiftTypedCompat
 #endif
 
 instance (Lift a, Lift b, Lift c, Lift d) => Lift (Product a b c d) where
     lift = genericLiftWithPkg pkgKey
 #if MIN_VERSION_template_haskell(2,16,0)
-    liftTyped = genericLiftTyped
+    liftTyped = genericLiftTypedCompat
 #endif
 
 instance (Lift a, Lift b) => Lift (Sum a b) where
     lift = genericLiftWithPkg pkgKey
 #if MIN_VERSION_template_haskell(2,16,0)
-    liftTyped = genericLiftTyped
+    liftTyped = genericLiftTypedCompat
 #endif
 
 instance Lift a => Lift (Unboxed a) where
     lift = genericLiftWithPkg pkgKey
 #if MIN_VERSION_template_haskell(2,16,0)
-    liftTyped = genericLiftTyped
+    liftTyped = genericLiftTypedCompat
 #endif
