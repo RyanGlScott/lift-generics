@@ -1,4 +1,4 @@
-## 0.2 [????.??.??]
+## 0.2 [2020.09.30]
 * `genericLiftTyped` and `genericLiftTypedWithPkg` now return a `Code` instead
   of a `TExp` to reflect the type of `liftTyped` changing in
   `template-haskell-2.17.0.0`. New functions `genericLiftTypedTExp` and
