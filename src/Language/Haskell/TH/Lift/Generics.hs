@@ -44,6 +44,9 @@ import Generics.Deriving
 
 import GHC.Base (unpackCString#)
 import GHC.Exts (Double(..), Float(..), Int(..), Word(..))
+#if __GLASGOW_HASKELL__ < 708
+import GHC.Conc (pseq)
+#endif
 
 import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Syntax
@@ -231,12 +234,19 @@ class GLiftDatatype f where
               -> m Exp  -- ^ The resulting Template Haskell expression
 
 instance GLiftDatatype V1 where
+    -- While many instances for void types produce the laziest possible result
+    -- (here, something like pure undefined), we choose to be stricter. There
+    -- seems little if any benefit to delaying exceptions in this context.
     gliftWith _ _ x =
-      return $ case x of
+      case x of
 #if __GLASGOW_HASKELL__ >= 708
-                 {}
+        {}
 #else
-                 !_ -> undefined
+        -- pseq ensures that we'll get the exception/non-termination
+        -- of v, rather than allowing GHC to "optimize" the function
+        -- to gliftWith _ _ _ = undefined, which it would be permitted
+        -- to do if we used seq or a bang pattern.
+        v -> v `pseq` undefined
 #endif
 
 instance (Constructor c, GLiftArgs f) => GLiftDatatype (C1 c f) where
