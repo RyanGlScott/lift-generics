@@ -239,24 +239,9 @@ instance GLiftDatatype V1 where
                  !_ -> undefined
 #endif
 
--- Difference list
-newtype DL a = DL ([a] -> [a])
-
-dempty :: DL a
-dempty = DL id
-
-dappend :: DL a -> DL a -> DL a
-DL f `dappend` DL g = DL (f . g)
-
-dsingleton :: a -> DL a
-dsingleton a = DL (a:)
-
-dtoList :: DL a -> [a]
-dtoList (DL f) = f []
-
 instance (Constructor c, GLiftArgs f) => GLiftDatatype (C1 c f) where
     gliftWith pName mName c@(M1 x) = do
-      args <- sequence (dtoList $ gliftArgs x)
+      args <- sequence (gliftArgs x)
       return $ foldl' AppE (ConE (mkNameG_d pName mName cName)) args
       where
         cName :: String
@@ -271,22 +256,22 @@ instance (GLiftDatatype f, GLiftDatatype g) => GLiftDatatype (f :+: g) where
 -- shouldn't need to use this typeclass directly; it is only exported for educational
 -- purposes.
 class GLiftArgs f where
-    gliftArgs :: Quote m => f a -> DL (m Exp)
+    gliftArgs :: Quote m => f a -> [m Exp]
 
 instance GLiftArgs U1 where
-    gliftArgs U1 = dempty
+    gliftArgs U1 = []
 
 instance Lift c => GLiftArgs (K1 i c) where
-    gliftArgs (K1 x) = dsingleton (liftQuote x)
+    gliftArgs (K1 x) = [liftQuote x]
 
 instance GLiftArgs f => GLiftArgs (S1 s f) where
     gliftArgs (M1 x) = gliftArgs x
 
 instance (GLiftArgs f, GLiftArgs g) => GLiftArgs (f :*: g) where
-    gliftArgs (f :*: g) = gliftArgs f `dappend` gliftArgs g
+    gliftArgs (f :*: g) = gliftArgs f ++ gliftArgs g
 
 instance GLiftArgs UAddr where
-    gliftArgs (UAddr a) = dsingleton (return (LitE (StringPrimL (word8ify (unpackCString# a)))))
+    gliftArgs (UAddr a) = [return (LitE (StringPrimL (word8ify (unpackCString# a))))]
       where
 #if MIN_VERSION_template_haskell(2,8,0)
         word8ify :: String -> [Word8]
@@ -298,17 +283,17 @@ instance GLiftArgs UAddr where
 
 #if MIN_VERSION_template_haskell(2,11,0)
 instance GLiftArgs UChar where
-    gliftArgs (UChar c) = dsingleton (return (LitE (CharPrimL (C# c))))
+    gliftArgs (UChar c) = [return (LitE (CharPrimL (C# c)))]
 #endif
 
 instance GLiftArgs UDouble where
-    gliftArgs (UDouble d) = dsingleton (return (LitE (DoublePrimL (toRational (D# d)))))
+    gliftArgs (UDouble d) = [return (LitE (DoublePrimL (toRational (D# d))))]
 
 instance GLiftArgs UFloat where
-    gliftArgs (UFloat f) = dsingleton (return (LitE (floatPrimL (toRational (F# f)))))
+    gliftArgs (UFloat f) = [return (LitE (floatPrimL (toRational (F# f))))]
 
 instance GLiftArgs UInt where
-    gliftArgs (UInt i) = dsingleton (return (LitE (IntPrimL (toInteger (I# i)))))
+    gliftArgs (UInt i) = [return (LitE (IntPrimL (toInteger (I# i))))]
 
 instance GLiftArgs UWord where
-    gliftArgs (UWord w) = dsingleton (return (LitE (WordPrimL (toInteger (W# w)))))
+    gliftArgs (UWord w) = [return (LitE (WordPrimL (toInteger (W# w))))]
