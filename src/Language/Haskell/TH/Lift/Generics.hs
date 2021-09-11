@@ -38,7 +38,7 @@ module Language.Haskell.TH.Lift.Generics (
     , Lift(..)
     ) where
 
-import Data.Foldable (foldl')
+import Control.Monad (liftM, (>=>))
 
 import Generics.Deriving
 
@@ -240,9 +240,8 @@ instance GLiftDatatype V1 where
 #endif
 
 instance (Constructor c, GLiftArgs f) => GLiftDatatype (C1 c f) where
-    gliftWith pName mName c@(M1 x) = do
-      args <- sequence (gliftArgs x)
-      return $ foldl' AppE (ConE (mkNameG_d pName mName cName)) args
+    gliftWith pName mName c@(M1 x) =
+      gliftArgs x (ConE (mkNameG_d pName mName cName))
       where
         cName :: String
         cName = conName c
@@ -251,27 +250,32 @@ instance (GLiftDatatype f, GLiftDatatype g) => GLiftDatatype (f :+: g) where
     gliftWith pName mName (L1 l) = gliftWith pName mName l
     gliftWith pName mName (R1 r) = gliftWith pName mName r
 
--- | Class of generic representation types which can be converted to a list of
--- Template Haskell expressions (which represent a constructors' arguments). You
--- shouldn't need to use this typeclass directly; it is only exported for educational
--- purposes.
+-- | Class of generic representation types which can conceptually be converted
+-- to a list of Template Haskell expressions (which represent a constructors'
+-- arguments). You shouldn't need to use this typeclass directly; it is only
+-- exported for educational purposes.
 class GLiftArgs f where
-    gliftArgs :: Quote m => f a -> [m Exp]
+    -- | @gliftArgs e f@ applies @f@ to the zero or more arguments represented
+    -- by @e@.
+    gliftArgs :: Quote m => f a -> Exp -> m Exp
 
 instance GLiftArgs U1 where
-    gliftArgs U1 = []
+    -- This pattern match must be strict, because
+    -- lift undefined really shouldn't just happen
+    -- to work for unit types.
+    gliftArgs U1 = return
 
 instance Lift c => GLiftArgs (K1 i c) where
-    gliftArgs (K1 x) = [liftQuote x]
+    gliftArgs (K1 x) h = AppE h `liftM` liftQuote x
 
 instance GLiftArgs f => GLiftArgs (S1 s f) where
     gliftArgs (M1 x) = gliftArgs x
 
 instance (GLiftArgs f, GLiftArgs g) => GLiftArgs (f :*: g) where
-    gliftArgs (f :*: g) = gliftArgs f ++ gliftArgs g
+    gliftArgs (f :*: g) = gliftArgs f >=> gliftArgs g
 
 instance GLiftArgs UAddr where
-    gliftArgs (UAddr a) = [return (LitE (StringPrimL (word8ify (unpackCString# a))))]
+    gliftArgs (UAddr a) h = return $ AppE h (LitE (StringPrimL (word8ify (unpackCString# a))))
       where
 #if MIN_VERSION_template_haskell(2,8,0)
         word8ify :: String -> [Word8]
@@ -283,17 +287,17 @@ instance GLiftArgs UAddr where
 
 #if MIN_VERSION_template_haskell(2,11,0)
 instance GLiftArgs UChar where
-    gliftArgs (UChar c) = [return (LitE (CharPrimL (C# c)))]
+    gliftArgs (UChar c) h = return $ AppE h (LitE (CharPrimL (C# c)))
 #endif
 
 instance GLiftArgs UDouble where
-    gliftArgs (UDouble d) = [return (LitE (DoublePrimL (toRational (D# d))))]
+    gliftArgs (UDouble d) h = return $ AppE h (LitE (DoublePrimL (toRational (D# d))))
 
 instance GLiftArgs UFloat where
-    gliftArgs (UFloat f) = [return (LitE (floatPrimL (toRational (F# f))))]
+    gliftArgs (UFloat f) h = return $ AppE h (LitE (floatPrimL (toRational (F# f))))
 
 instance GLiftArgs UInt where
-    gliftArgs (UInt i) = [return (LitE (IntPrimL (toInteger (I# i))))]
+    gliftArgs (UInt i) h = return $ AppE h (LitE (IntPrimL (toInteger (I# i))))
 
 instance GLiftArgs UWord where
-    gliftArgs (UWord w) = [return (LitE (WordPrimL (toInteger (W# w))))]
+    gliftArgs (UWord w) h = return $ AppE h (LitE (WordPrimL (toInteger (W# w))))
