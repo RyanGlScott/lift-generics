@@ -44,6 +44,9 @@ import Generics.Deriving
 
 import GHC.Base (unpackCString#)
 import GHC.Exts (Double(..), Float(..), Int(..), Word(..))
+#if __GLASGOW_HASKELL__ < 708
+import GHC.Conc (pseq)
+#endif
 
 import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Syntax
@@ -236,7 +239,10 @@ instance GLiftDatatype V1 where
 #if __GLASGOW_HASKELL__ >= 708
                  {}
 #else
-                 !_ -> undefined
+-- Using `pseq` here ensures that we actually force
+-- `x`, rather than letting the strictness analyzer
+-- just throw up undefined.
+                 _ -> x `pseq` undefined
 #endif
 
 -- Difference list
