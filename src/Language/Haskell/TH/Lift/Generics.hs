@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE MagicHash            #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -25,11 +26,13 @@ module Language.Haskell.TH.Lift.Generics (
     , genericLiftTypedTExpWithPkg
     , genericLiftTypedCompatWithPkg
 #endif
-#if __GLASGOW_HASKELL__ >= 711
+#if MIN_VERSION_base(4,5,0)
     , genericLift
+#if MIN_VERSION_template_haskell(2,9,0)
     , genericLiftTyped
     , genericLiftTypedTExp
     , genericLiftTypedCompat
+#endif
 #endif
     , GLift(..)
     , GLiftDatatype(..)
@@ -61,14 +64,21 @@ import Data.Word (Word8)
 import GHC.Exts (Char(..))
 #endif
 
+#if MIN_VERSION_base(4,5,0) && !MIN_VERSION_base(4,9,0)
+import qualified Data.Typeable as T
+#endif
+#if MIN_VERSION_base(4,7,0) && !MIN_VERSION_base(4,9,0)
+import Data.Proxy (Proxy (..))
+#endif
+
 #undef CURRENT_PACKAGE_KEY
 -- | "GHC.Generics"-based 'lift' implementation.
 --
--- API limitations of early versions of GHC (7.10 and earlier) require the user
--- to produce the package name themselves. This isn't as easy to come up with as
--- it sounds, because GHC 7.10 uses a hashed package ID for a name. To make things
--- worse, if you produce the wrong package name, you might get bizarre compilation
--- errors!
+-- API limitations of early versions of GHC (7.2 and earlier) require the user
+-- to produce the package name themselves. This isn't always as easy to come up
+-- with as it sounds, because GHC 7.10 uses a hashed package ID for a name. To
+-- make things worse, if you produce the wrong package name, you might get
+-- bizarre compilation errors!
 --
 -- There's no need to fear, though—the code sample below shows an example of how to
 -- properly use 'genericLiftWithPkg' without shooting yourself in the foot:
@@ -145,9 +155,10 @@ genericLiftTypedCompatWithPkg = genericLiftTypedTExpWithPkg
 # endif
 #endif
 
-#if __GLASGOW_HASKELL__ >= 711
--- | "GHC.Generics"-based 'lift' implementation. Only available on GHC 8.0 and later
--- due to API limitations of earlier GHC versions.
+#if MIN_VERSION_base (4,5,0)
+-- | "GHC.Generics"-based 'lift' implementation. Only available on GHC 7.4.1 and later
+-- due to API limitations of earlier GHC versions. Note: GHC versions before 8.0
+-- have extra 'Data.Typeable.Typeable' constraints on these functions.
 --
 -- Unlike 'genericLiftWithPkg', this function does all of the work for you:
 --
@@ -177,15 +188,36 @@ genericLiftTypedCompatWithPkg = genericLiftTypedTExpWithPkg
 -- foo :: Foo
 -- foo = $(lift (Foo 1 'a' "baz"))
 -- @
+#if MIN_VERSION_base (4,9,0)
 genericLift :: (Quote m, Generic a, GLift (Rep a)) => a -> m Exp
 genericLift = glift "" . from
+#elif MIN_VERSION_base (4,7,0)
+genericLift :: forall m a. (Quote m, Generic a, T.Typeable a, GLift (Rep a)) => a -> m Exp
+genericLift =
+  glift (T.tyConPackage (T.typeRepTyCon (T.typeRep (Proxy :: Proxy a))))
+    . from
+#else
+genericLift :: forall m a. (Quote m, Generic a, T.Typeable a, GLift (Rep a)) => a -> m Exp
+genericLift =
+  glift (T.tyConPackage (T.typeRepTyCon (T.typeOf (undefined :: a))))
+    . from
+#endif
 
+#if MIN_VERSION_template_haskell(2,9,0)
 -- | Like 'genericLift', but returns a 'Code' instead of an 'Exp'.
+#if MIN_VERSION_base (4,9,0)
 genericLiftTyped :: (Quote m, Generic a, GLift (Rep a)) => a -> Code m a
+#else
+genericLiftTyped :: (Quote m, Generic a, T.Typeable a, GLift (Rep a)) => a -> Code m a
+#endif
 genericLiftTyped = unsafeCodeCoerce . genericLift
 
 -- | Like 'genericLift', but returns a 'TExp' instead of an 'Exp'.
+#if MIN_VERSION_base (4,9,0)
 genericLiftTypedTExp :: (Quote m, Generic a, GLift (Rep a)) => a -> m (TExp a)
+#else
+genericLiftTypedTExp :: (Quote m, Generic a, T.Typeable a, GLift (Rep a)) => a -> m (TExp a)
+#endif
 genericLiftTypedTExp = unsafeTExpCoerceQuote . genericLift
 
 -- | Lift 'genericLift', but returns:
@@ -195,12 +227,17 @@ genericLiftTypedTExp = unsafeTExpCoerceQuote . genericLift
 --
 -- This function is ideal for implementing the 'liftTyped' method of 'Lift'
 -- directly, as its type changed in @template-haskell-2.17.0.0@.
+#if MIN_VERSION_base (4,9,0)
 genericLiftTypedCompat :: (Quote m, Generic a, GLift (Rep a)) => a -> Splice m a
+#else
+genericLiftTypedCompat :: (Quote m, Generic a, T.Typeable a, GLift (Rep a)) => a -> Splice m a
+#endif
 # if MIN_VERSION_template_haskell(2,17,0)
 genericLiftTypedCompat = genericLiftTyped
 # else
 genericLiftTypedCompat = genericLiftTypedTExp
 # endif
+#endif
 #endif
 
 -- | Class of generic representation types which can be converted to Template
