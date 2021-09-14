@@ -342,12 +342,12 @@ genericLiftTypedCompatWithPkg = genericLiftTypedTExpWithPkg
 -- foo = $(lift (Foo 1 \'a\' \"baz\"))
 -- @
 
-# if MIN_VERSION_base (4,7,0)
 -- | Produce a generic definition of 'lift'.
 --
 -- === Note
 --
 -- A @'Data.Typeable.Typeable' a@ instance is required for GHC < 8.0 (@base@ < 4.9).
+# if MIN_VERSION_base (4,7,0)
 #  if MIN_VERSION_base (4,9,0)
 genericLift :: (Quote m, Generic a, GLift (Rep a)) => a -> m Exp
 genericLift = glift "" . from
