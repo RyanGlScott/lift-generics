@@ -46,6 +46,12 @@ spec = parallel $ do
         describe "Unboxed" $
             it description $
                 u `shouldBe` $(lift u)
+        describe "Const" $
+            it description $
+                c `shouldBe` $(lift c)
+        describe "Ap" $
+            it description $
+                z `shouldBe` $(lift z)
 #if MIN_VERSION_template_haskell(2,16,0)
     describe "genericLiftTyped" $ do
         describe "Unit" $
@@ -61,4 +67,10 @@ spec = parallel $ do
         describe "Unboxed" $
             it description $
                 u `shouldBe` $$(liftTyped u)
+        describe "Const" $
+            it description $
+                c `shouldBe` $$(liftTyped c)
+        describe "Ap" $
+            it description $
+                z `shouldBe` $$(liftTyped z)
 #endif

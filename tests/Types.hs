@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP                        #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash                  #-}
 {-# LANGUAGE StandaloneDeriving         #-}
@@ -20,7 +21,8 @@ Data types for testing `lift-generics`' capabilities.
 module Types (
     PureQ, runPureQ
   , Unit(..), Product(..), Sum(..)
-  , p, s, u
+  , Const(..), Ap(..)
+  , p, s, u, c, z
   ) where
 
 import Control.Monad.State
@@ -61,6 +63,14 @@ data Sum a b = Inl a | Inr b
   deriving (Eq, Ord, Show)
 $(deriveAll ''Sum)
 
+newtype Const a b = Const a
+  deriving (Eq, Ord, Show)
+$(deriveAll ''Const)
+
+newtype Ap f a = Ap (f a)
+  deriving (Eq, Ord, Show)
+$(deriveAll ''Ap)
+
 data Unboxed a
    = Unboxed a
 #if MIN_VERSION_template_haskell(2,11,0)
@@ -89,6 +99,12 @@ u = Unboxed 1
             1#
             1##
 
+c :: Const Int a
+c = Const 1
+
+z :: Ap Maybe Int
+z = Ap (Just 3)
+
 pkgKey :: String
 pkgKey = "main"
 
@@ -111,6 +127,22 @@ instance (Lift a, Lift b) => Lift (Sum a b) where
 #endif
 
 instance Lift a => Lift (Unboxed a) where
+    lift = genericLiftWithPkg pkgKey
+#if MIN_VERSION_template_haskell(2,16,0)
+    liftTyped = genericLiftTypedCompat
+#endif
+
+-- This instance shows that we can have parametric polymorphism—we don't need
+-- Typeable instances for @a@ or @b@.
+instance Lift a => Lift (Const a b) where
+    lift = genericLiftWithPkg pkgKey
+#if MIN_VERSION_template_haskell(2,16,0)
+    liftTyped = genericLiftTypedCompat
+#endif
+
+-- This instance demonstrates some polykindedness—the arguments to Ap aren't
+-- all of kind Type.
+instance Lift (f a) => Lift (Ap f a) where
     lift = genericLiftWithPkg pkgKey
 #if MIN_VERSION_template_haskell(2,16,0)
     liftTyped = genericLiftTypedCompat
