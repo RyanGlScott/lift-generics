@@ -241,6 +241,8 @@ import Data.Proxy (Proxy (..))
 -- === Note
 --
 -- A @'Data.Typeable.Typeable' a@ instance is required for 7.4 <= GHC < 8.0 (4.5 <= @base@ < 4.9).
+--
+-- @since 0.2.1
 #if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> m Exp
 #else
@@ -254,6 +256,8 @@ genericLiftWithPkgFallback = genericLiftWithPkg
 
 #if MIN_VERSION_template_haskell(2,9,0)
 -- | Like 'genericLiftWithPkgFallback', but returns a 'Code' instead of an 'Exp'.
+--
+-- @since 0.2.1
 # if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftTypedWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> Code m a
 # else
@@ -266,6 +270,8 @@ genericLiftTypedWithPkgFallback = genericLiftTypedWithPkg
 # endif
 
 -- | Like 'genericLiftWithPkgFallback', but returns a 'TExp' instead of an 'Exp'.
+--
+-- @since 0.2.1
 # if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftTypedTExpWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> m (TExp a)
 # else
@@ -284,6 +290,8 @@ genericLiftTypedTExpWithPkgFallback = genericLiftTypedTExpWithPkg
 --
 -- This function is ideal for implementing the 'liftTyped' method of 'Lift'
 -- directly, as its type changed in @template-haskell-2.17.0.0@.
+--
+-- @since 0.2.1
 # if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftTypedCompatWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> Splice m a
 # else
