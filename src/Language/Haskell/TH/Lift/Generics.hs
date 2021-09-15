@@ -51,23 +51,17 @@ package to derive 'Lift' instances. If you choose to continue with this package:
 
 For relevant versions, the \"friendly\" and \"less friendly\" functions require
 the type to satisfy an @OuterTypeable@ constraint.  A type is @OuterTypable@ if
-its /type constructor/ is 'Typeable'. For example, @'Maybe' a@ is only
-'Typeable' if @a@ is 'Typeable', but it is always @OuterTypeable@.
+its /type constructor/ (applied to any /kind/ arguments/ is 'Typeable'. For
+example, @'Maybe' a@ is only 'Typeable' if @a@ is 'Typeable', but it is always
+@OuterTypeable@. For @'Control.Applicative.Const' a b@ to be 'OuterTypeable',
+the /kinds/ of @a@ and @b@ must be 'Typeable'.
 
-Before GHC 7.8, only the last seven arguments are fully
-supported by @OuterTypeable@. So given a type
-
-@
-data Foo a b c d e f g h i = ...
-  deriving ('Typeable')
-@
-
-@OuterTypeable (Foo a b c d e f g h i)@ requires that @a@
-and @b@ be 'Typeable', but the rest of the arguments need
-not be. In practice, this means that if you use these
-functions to write a 'Lift' instance for a type with more
-than seven parameters on GHC < 7.8, then you'll need
-'Typeable' constraints on the first few.
+Before GHC 7.8, 'Typeable' can only be derived for types with seven
+or fewer parameters, all of kind @*@. Types with more parameters that
+manually instantiate the now-defunct @Typeable7@ class should work,
+but there may be some loss of polymorphism in the first arguments.
+Types whose 'Typeable' instances can't be derived because of kind issues
+will not work with these GHC versions.
 -}
 module Language.Haskell.TH.Lift.Generics (
 #if MIN_VERSION_base(4,5,0)

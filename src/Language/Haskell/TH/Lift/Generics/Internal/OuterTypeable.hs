@@ -15,23 +15,9 @@ module Language.Haskell.TH.Lift.Generics.Internal.OuterTypeable
   ) where
 import Data.Typeable
 
--- | A type is @OuterTypable@ if its /type constructor/ is
--- 'Typeable'. For example, @'Maybe' a@ is only 'Typeable' if
--- @a@ is 'Typeable', but it is always @OuterTypeable@.
---
--- === Caution
---
--- Before GHC 7.8, only the last seven arguments are properly
--- supported. So given a type
---
--- @
--- data Foo a b c d e f g h i = ...
---   deriving (Typeable)
--- @
---
--- @OuterTypeable (Foo a b c d e f g h i)@ requires that @a@
--- and @b@ be 'Typeable', but the rest of the arguments need
--- not be.
+-- | A type is @OuterTypable@ if its /type constructor/ (applied to any kind
+-- arguments) is 'Typeable'. For example, @'Maybe' a@ is only 'Typeable' if @a@
+-- is 'Typeable', but it is always @OuterTypeable@.
 class OuterTypeable a where
   -- | Get the 'TypeRep' corresponding to the outermost constructor
   -- of a type.
