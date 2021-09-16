@@ -51,7 +51,7 @@ package to derive 'Lift' instances. If you choose to continue with this package:
 
 For relevant versions, the \"friendly\" and \"less friendly\" functions require
 the type to satisfy an @OuterTypeable@ constraint.  A type is @OuterTypable@ if
-its /type constructor/ (applied to any /kind/ arguments/ is 'Typeable'. For
+its /type constructor/ (applied to any /kind/ arguments) is 'Typeable'. For
 example, @'Maybe' a@ is only 'Typeable' if @a@ is 'Typeable', but it is always
 @OuterTypeable@. For @'Control.Applicative.Const' a b@ to be 'OuterTypeable',
 the /kinds/ of @a@ and @b@ must be 'Typeable'.

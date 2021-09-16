@@ -139,6 +139,11 @@ w :: Tree Int
 w = Node 3 [Node 4 [], Node 5 []]
 
 #if MIN_VERSION_base(4,5,0)
+
+-- The types below are essentially the same as the ones above.  However, we
+-- give them genericLift-based instances rather than genericLiftWithPkg ones,
+-- to ensure that the former work too.
+
 data Unit' = Unit'
   deriving (Eq, Ord, Show, Typeable)
 $(deriveAll ''Unit')
@@ -224,8 +229,6 @@ instance Lift a => Lift (Unboxed a) where
     liftTyped = genericLiftTypedCompatWithPkg pkgKey
 #endif
 
--- This instance shows that we can have parametric polymorphism—we don't need
--- Typeable instances for @a@ or @b@.
 instance Lift a => Lift (Const a b) where
     lift = genericLiftWithPkg pkgKey
 #if MIN_VERSION_template_haskell(2,16,0)
