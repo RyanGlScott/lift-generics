@@ -1,4 +1,4 @@
-## 0.2.1 [2021.09.??]
+## 0.2.1 [2021.09.16]
 * The lifting functions have been modified to reduce splice
   time for constructors with many fields from quadratic to
   linear. This probably only has a modest impact on total
