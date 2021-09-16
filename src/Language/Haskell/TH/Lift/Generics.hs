@@ -29,8 +29,8 @@ the built-in `DeriveLift` mechanism, which has the advantage of working for
 GADTs and existential types.
 
 * If you only need to support GHC 7.4 (@base@ 4.5) and later, and you have
-'Typeable' instances for the relevant types (or can derive them), then you should
-use the \"friendly\" functions here.
+'Typeable' instances for the relevant type constructors (or can derive them),
+then you should use the \"friendly\" functions here.
 
 * If you must support GHC versions before 7.4 (@base@ 4.5), or types in other
 packages without 'Typeable' instances, then you should seriously consider using
@@ -42,10 +42,26 @@ package to derive 'Lift' instances. If you choose to continue with this package:
     functions here. These take an argument for the package name, but they ignore it
     (acting just like the friendly ones) for GHC 7.4 (@base@ 4.5) and later.
 
-    * If you lack a 'Typeable' instance for a type, then you'll need to use the
-    \"unfriendly\" functions. These rely solely on the user-provided package
-    name. On GHC 7.10, it is extremely difficult to obtain the correct package
-    name for an external package.
+    * If you lack a 'Typeable' instance for a type constructor, then you'll
+    need to use the \"unfriendly\" functions. These rely solely on the
+    user-provided package name. On GHC 7.10, it is extremely difficult to
+    obtain the correct package name for an external package.
+
+=== A note on 'Typeable' constraints
+
+For relevant versions, the \"friendly\" and \"less friendly\" functions require
+the type to satisfy an @OuterTypeable@ constraint.  A type is @OuterTypable@ if
+its /type constructor/ (applied to any /kind/ arguments) is 'Typeable'. For
+example, @'Maybe' a@ is only 'Typeable' if @a@ is 'Typeable', but it is always
+@OuterTypeable@. For @'Control.Applicative.Const' a b@ to be 'OuterTypeable',
+the /kinds/ of @a@ and @b@ must be 'Typeable'.
+
+Before GHC 7.8, 'Typeable' can only be derived for types with seven
+or fewer parameters, all of kind @*@. Types with more parameters that
+manually instantiate the now-defunct @Typeable7@ class should work,
+but there may be some loss of polymorphism in the first arguments.
+Types whose 'Typeable' instances can't be derived because of kind issues
+will not work with these GHC versions.
 -}
 module Language.Haskell.TH.Lift.Generics (
 #if MIN_VERSION_base(4,5,0)
@@ -78,14 +94,16 @@ module Language.Haskell.TH.Lift.Generics (
     , genericLiftTypedTExpWithPkgFallback
     , genericLiftTypedCompatWithPkgFallback
 #endif
-    
+
     -- ** Unfriendly implementations
     --
     -- | These implementations should be used when support for versions
     -- before GHC 8.0 (@base@ 4.9) is required and a 'Data.Typeable.Typeable' instance
     -- is /not/ available. These functions are termed "unfriendly" because
-    -- they probably won't work at all under GHC 7.10 when working with types
-    -- defined in other packages.
+    -- they're extremely hard to use under GHC 7.10 when working with types
+    -- defined in other packages. The only way to do so is to use a 'Typeable'
+    -- type in the same package to get the \"package name\", which will be a
+    -- hash value.
     , genericLiftWithPkg
 #if MIN_VERSION_template_haskell(2,9,0)
     , genericLiftTypedWithPkg
@@ -102,6 +120,10 @@ module Language.Haskell.TH.Lift.Generics (
     -- * 'Lift' reexport
     , Lift(..)
     ) where
+
+#if MIN_VERSION_base(4,5,0) && !MIN_VERSION_base(4,9,0)
+import Language.Haskell.TH.Lift.Generics.Internal.OuterTypeable
+#endif
 
 import Control.Monad (liftM, (>=>))
 
@@ -128,9 +150,9 @@ import GHC.Exts (Char(..))
 
 #if MIN_VERSION_base(4,5,0) && !MIN_VERSION_base(4,9,0)
 import qualified Data.Typeable as T
-import Data.Typeable (Typeable)
 #endif
-#if MIN_VERSION_base(4,7,0) && !MIN_VERSION_base(4,9,0)
+
+#if MIN_VERSION_base(4,5,0) && !MIN_VERSION_base(4,9,0)
 import Data.Proxy (Proxy (..))
 #endif
 
@@ -213,10 +235,12 @@ import Data.Proxy (Proxy (..))
 -- === Note
 --
 -- A @'Data.Typeable.Typeable' a@ instance is required for 7.4 <= GHC < 8.0 (4.5 <= @base@ < 4.9).
+--
+-- @since 0.2.1
 #if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> m Exp
 #else
-genericLiftWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), Typeable a) => String -> a -> m Exp
+genericLiftWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => String -> a -> m Exp
 #endif
 #if MIN_VERSION_base(4,5,0)
 genericLiftWithPkgFallback _pkg = genericLift
@@ -226,10 +250,12 @@ genericLiftWithPkgFallback = genericLiftWithPkg
 
 #if MIN_VERSION_template_haskell(2,9,0)
 -- | Like 'genericLiftWithPkgFallback', but returns a 'Code' instead of an 'Exp'.
+--
+-- @since 0.2.1
 # if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftTypedWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> Code m a
 # else
-genericLiftTypedWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), Typeable a) => String -> a -> Code m a
+genericLiftTypedWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => String -> a -> Code m a
 # endif
 # if MIN_VERSION_base(4,5,0)
 genericLiftTypedWithPkgFallback _pkg = genericLiftTyped
@@ -238,10 +264,12 @@ genericLiftTypedWithPkgFallback = genericLiftTypedWithPkg
 # endif
 
 -- | Like 'genericLiftWithPkgFallback', but returns a 'TExp' instead of an 'Exp'.
+--
+-- @since 0.2.1
 # if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftTypedTExpWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> m (TExp a)
 # else
-genericLiftTypedTExpWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), Typeable a) => String -> a -> m (TExp a)
+genericLiftTypedTExpWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => String -> a -> m (TExp a)
 # endif
 # if MIN_VERSION_base(4,5,0)
 genericLiftTypedTExpWithPkgFallback _pkg = genericLiftTypedTExp
@@ -256,10 +284,12 @@ genericLiftTypedTExpWithPkgFallback = genericLiftTypedTExpWithPkg
 --
 -- This function is ideal for implementing the 'liftTyped' method of 'Lift'
 -- directly, as its type changed in @template-haskell-2.17.0.0@.
+--
+-- @since 0.2.1
 # if MIN_VERSION_base (4,9,0) || !MIN_VERSION_base (4,5,0)
 genericLiftTypedCompatWithPkgFallback :: (Quote m, Generic a, GLift (Rep a)) => String -> a -> Splice m a
 # else
-genericLiftTypedCompatWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), Typeable a) => String -> a -> Splice m a
+genericLiftTypedCompatWithPkgFallback :: (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => String -> a -> Splice m a
 # endif
 # if MIN_VERSION_template_haskell(2,17,0)
 genericLiftTypedCompatWithPkgFallback = genericLiftTypedWithPkgFallback
@@ -347,20 +377,13 @@ genericLiftTypedCompatWithPkg = genericLiftTypedTExpWithPkg
 -- === Note
 --
 -- A @'Data.Typeable.Typeable' a@ instance is required for GHC < 8.0 (@base@ < 4.9).
-# if MIN_VERSION_base (4,7,0)
-#  if MIN_VERSION_base (4,9,0)
+# if MIN_VERSION_base (4,9,0)
 genericLift :: (Quote m, Generic a, GLift (Rep a)) => a -> m Exp
 genericLift = glift "" . from
-#  else
-genericLift :: forall m a. (Quote m, Generic a, GLift (Rep a), Typeable a) => a -> m Exp
-genericLift =
-  glift (T.tyConPackage (T.typeRepTyCon (T.typeRep (Proxy :: Proxy a))))
-    . from
-#  endif
 # else
-genericLift :: forall m a. (Quote m, Generic a, Typeable a, GLift (Rep a)) => a -> m Exp
+genericLift :: forall m a. (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => a -> m Exp
 genericLift =
-  glift (T.tyConPackage (T.typeRepTyCon (T.typeOf (undefined :: a))))
+  glift (T.tyConPackage (T.typeRepTyCon (getConTR (Proxy :: Proxy a))))
     . from
 # endif
 
@@ -369,7 +392,7 @@ genericLift =
 #  if MIN_VERSION_base (4,9,0)
 genericLiftTyped :: (Quote m, Generic a, GLift (Rep a)) => a -> Code m a
 #  else
-genericLiftTyped :: (Quote m, Generic a, GLift (Rep a), Typeable a) => a -> Code m a
+genericLiftTyped :: (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => a -> Code m a
 #  endif
 genericLiftTyped = unsafeCodeCoerce . genericLift
 
@@ -377,7 +400,7 @@ genericLiftTyped = unsafeCodeCoerce . genericLift
 #  if MIN_VERSION_base (4,9,0)
 genericLiftTypedTExp :: (Quote m, Generic a, GLift (Rep a)) => a -> m (TExp a)
 #  else
-genericLiftTypedTExp :: (Quote m, Generic a, GLift (Rep a), Typeable a) => a -> m (TExp a)
+genericLiftTypedTExp :: (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => a -> m (TExp a)
 #  endif
 genericLiftTypedTExp = unsafeTExpCoerceQuote . genericLift
 
@@ -391,7 +414,7 @@ genericLiftTypedTExp = unsafeTExpCoerceQuote . genericLift
 #  if MIN_VERSION_base (4,9,0)
 genericLiftTypedCompat :: (Quote m, Generic a, GLift (Rep a)) => a -> Splice m a
 #  else
-genericLiftTypedCompat :: (Quote m, Generic a, GLift (Rep a), Typeable a) => a -> Splice m a
+genericLiftTypedCompat :: (Quote m, Generic a, GLift (Rep a), OuterTypeable a) => a -> Splice m a
 #  endif
 #  if MIN_VERSION_template_haskell(2,17,0)
 genericLiftTypedCompat = genericLiftTyped

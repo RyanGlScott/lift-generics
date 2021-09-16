@@ -1,3 +1,19 @@
+## 0.2.1 [2021.09.??]
+* The lifting functions have been modified to reduce splice
+  time for constructors with many fields from quadratic to
+  linear. This probably only has a modest impact on total
+  compilation time.
+
+* `genericLift`, `genericLiftTyped`, `genericLiftTypedExp`, and
+  `genericLiftTypedCompat` functions now work for GHC 7.4 and above
+  for types that derive `Typeable`.
+
+* `genericLiftWithPkgFallback`, `genericLiftTypedWithPkgFallback`,
+  `genericLiftTypedExpWithPkgFallback`, and
+  `genericLiftTypedCompatWithPkgFallback` functions have been added that take
+  advantage of `Typeable` instances for GHC 7.4 and above but also take a
+  user-provided package name for earlier versions.
+
 ## 0.2 [2020.09.30]
 * `genericLiftTyped` and `genericLiftTypedWithPkg` now return a `Code` instead
   of a `TExp` to reflect the type of `liftTyped` changing in

@@ -57,11 +57,15 @@ source-repository head
 
 library
   exposed-modules:     Language.Haskell.TH.Lift.Generics
+  if (impl(ghc >= 7.4) && impl(ghc < 8.0))
+    other-modules:       Language.Haskell.TH.Lift.Generics.Internal.OuterTypeable
   build-depends:       base             >= 4.3 && < 5
                      , generic-deriving >= 1.9 && < 2
                      , ghc-prim
                      , template-haskell >= 2.4 && < 2.18
                      , th-compat        >= 0.1 && < 0.2
+  if (impl(ghc >= 7.4) && impl(ghc < 7.8))
+    build-depends:     tagged >= 0.5 && < 0.9
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall
@@ -74,6 +78,8 @@ test-suite spec
                        Paths_lift_generics
   build-depends:       base             >= 4.3   && < 5
                      , base-compat      >= 0.8.2 && < 1
+                     , containers       >= 0.1 && < 0.7
+                     , th-lift-instances >= 0.1 && < 0.2
                      , generic-deriving >= 1.9   && < 2
                      , hspec            >= 2     && < 3
                      , lift-generics
