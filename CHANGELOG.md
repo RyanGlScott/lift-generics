@@ -1,4 +1,4 @@
-## 0.3 [????.??.??]
+## 0.3 [2024.10.22]
 * Drop support for pre-8.0 versions of GHC.
 * Remove `genericLiftWithPkg`, `genericLiftWithPkgFallback`, and related
   functions. These functions were only useful for defining `Generic`-based
