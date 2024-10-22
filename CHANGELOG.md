@@ -1,3 +1,11 @@
+## 0.3 [????.??.??]
+* Drop support for pre-8.0 versions of GHC.
+* Remove `genericLiftWithPkg`, `genericLiftWithPkgFallback`, and related
+  functions. These functions were only useful for defining `Generic`-based
+  `lift` implementations on pre-8.0 versions of GHC. Now that `lift-generics`
+  no longer supports these versions of GHC, they are no longer necessary or
+  useful. Use `genericLift` and friends instead.
+
 ## 0.2.1 [2021.09.16]
 * The lifting functions have been modified to reduce splice
   time for constructors with many fields from quadratic to
