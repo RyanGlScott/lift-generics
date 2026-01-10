@@ -1,4 +1,5 @@
 ### next [????.??.??]
+* Allow building with `template-haskell-2.24.*` (GHC 9.14).
 * Remove unused `ghc-prim` dependency.
 
 ## 0.3 [2024.10.22]
