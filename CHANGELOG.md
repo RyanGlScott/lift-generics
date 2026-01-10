@@ -1,3 +1,6 @@
+### next [????.??.??]
+* Remove unused `ghc-prim` dependency.
+
 ## 0.3 [2024.10.22]
 * Drop support for pre-8.0 versions of GHC.
 * Remove `genericLiftWithPkg`, `genericLiftWithPkgFallback`, and related

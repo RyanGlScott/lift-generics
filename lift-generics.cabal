@@ -42,7 +42,6 @@ source-repository head
 library
   exposed-modules:     Language.Haskell.TH.Lift.Generics
   build-depends:       base             >= 4.9  && < 5
-                     , ghc-prim
                      , template-haskell >= 2.11 && < 2.24
                      , th-compat        >= 0.1  && < 0.2
   hs-source-dirs:      src
