@@ -1,5 +1,5 @@
 name:                lift-generics
-version:             0.3
+version:             0.3.1
 synopsis:            GHC.Generics-based Language.Haskell.TH.Syntax.lift implementation
 description:         This package provides a "GHC.Generics"-based @genericLift@
                      function, which can be used for providing a
